@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>海上风电数字监测运维系统</title>
+  <script type="module" crossorigin src="/offshore-wind-ops/assets/index-DO2Gn-md.js"></script>
+  <link rel="modulepreload" crossorigin href="/offshore-wind-ops/assets/three-CVx24Lwc.js">
+  <link rel="modulepreload" crossorigin href="/offshore-wind-ops/assets/echarts-CVTAk9_P.js">
+  <link rel="stylesheet" crossorigin href="/offshore-wind-ops/assets/index-QUP7Pwea.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <header class="hud-top">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        <h1>海上风电数字监测运维系统</h1>
+        <p class="sub">OFFSHORE WIND · MONITORING &amp; O&amp;M</p>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><span class="k">总功率</span><b id="kpi-power">--</b><span class="u">MW</span></div>
+      <div class="kpi"><span class="k">平均风速</span><b id="kpi-wind">--</b><span class="u">m/s</span></div>
+      <div class="kpi"><span class="k">可利用率</span><b id="kpi-avail">--</b><span class="u">%</span></div>
+      <div class="kpi"><span class="k">在线机组</span><b id="kpi-online">--</b><span class="u">/ 4</span></div>
+    </div>
+  </header>
+
+  <aside class="hud-fleet">
+    <div class="panel-title">机组状态</div>
+    <div id="fleet-list" class="fleet-list"></div>
+    <div class="legend">
+      <span><i class="c-run"></i>运行</span>
+      <span><i class="c-derated"></i>降载</span>
+      <span><i class="c-fault"></i>故障</span>
+      <span><i class="c-idle"></i>停机</span>
+    </div>
+  </aside>
+
+  <aside class="hud-info" id="info-card" hidden>
+    <div class="panel-title" id="info-title">机组</div>
+    <div class="info-grid" id="info-grid"></div>
+    <canvas id="part-spark" width="232" height="46" hidden></canvas>
+    <button class="btn ghost" id="info-close">关闭</button>
+  </aside>
+
+  <aside class="hud-alarms">
+    <div class="panel-title">告警 <span id="alarm-count">0</span></div>
+    <div id="alarm-list" class="alarm-list">
+      <div class="alarm-empty">暂无告警</div>
+    </div>
+  </aside>
+
+  <aside class="hud-chart">
+    <div class="chart-head">
+      <div class="panel-title" id="chart-title">趋势</div>
+      <div class="chart-tabs" id="chart-tabs">
+        <button class="on" data-mode="power">功率</button>
+        <button data-mode="temp">温度</button>
+        <button data-mode="vib">振动</button>
+      </div>
+    </div>
+    <div id="chart"></div>
+  </aside>
+
+  <aside class="hud-sea">
+    <div class="panel-title">海洋环境 <span class="sea-level" id="sea-level">4 级</span></div>
+    <div class="wind-row">
+      <span class="wc-label">浪高</span>
+      <input id="sea-height" type="range" min="0.2" max="6" step="0.1" value="1.6" />
+      <b id="sea-height-value">1.6</b>
+      <span class="u">m</span>
+    </div>
+    <div class="wind-row">
+      <span class="wc-label">周期</span>
+      <input id="sea-period" type="range" min="3.5" max="14" step="0.5" value="7.5" />
+      <b id="sea-period-value">7.5</b>
+      <span class="u">s</span>
+    </div>
+    <div class="wind-row">
+      <span class="wc-label">浪向</span>
+      <input id="sea-dir" type="range" min="0" max="359" step="1" value="250" />
+      <b id="sea-dir-value">250°</b>
+    </div>
+    <button class="btn mini on" id="sea-auto">跟随风速</button>
+  </aside>
+
+  <aside class="hud-wind">
+    <div class="panel-title">风况调节</div>
+    <div class="wind-row">
+      <span class="wc-label">风速</span>
+      <input id="wind-slider" type="range" min="0" max="25" step="0.5" value="9" />
+      <b id="wind-value">9.0</b>
+      <span class="u">m/s</span>
+    </div>
+    <div class="wind-row">
+      <span class="wc-label">风向</span>
+      <input id="dir-slider" type="range" min="0" max="359" step="1" value="220" />
+      <b id="dir-value">220°</b>
+      <span class="u" id="dir-compass">SW</span>
+    </div>
+    <button class="btn mini on" id="wind-auto">自动风速</button>
+  </aside>
+
+  <footer class="hud-bottom">
+    <div class="controls">
+      <button class="btn primary" id="btn-cinema">▶ 运镜 60s</button>
+      <button class="btn" id="btn-monitor">监测数据</button>
+      <button class="btn" id="btn-asset">风机本体</button>
+      <button class="btn" id="btn-explode">拆解机舱</button>
+      <button class="btn" id="btn-xray">透视</button>
+      <button class="btn" id="btn-reset">重置视角</button>
+      <button class="btn" id="btn-view1">机组视角</button>
+      <button class="btn" id="btn-view2">机舱视角</button>
+    </div>
+    <div class="hint" id="hint">拖拽旋转 · 滚轮缩放 · 点击机组查看数据</div>
+  </footer>
+
+  <div id="labels" class="labels-layer"></div>
+  <svg id="leaders" class="leaders-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="part-badge" class="part-badge" hidden></div>
+
+  <div class="cinema-bar" id="cinema-bar" hidden>
+    <span id="cinema-time">00:00</span>
+    <div class="track"><div class="fill" id="cinema-fill"></div></div>
+    <span>01:00</span>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="ring"></div>
+    <p>正在构建海上风电场…</p>
+  </div>
+
+  <div class="monitor" id="monitor" hidden>
+    <div class="monitor-head">
+      <span id="monitor-title">WT-02 · 全量监测</span>
+      <button class="btn ghost" id="monitor-close">关闭</button>
+    </div>
+    <div class="monitor-grid" id="monitor-grid"></div>
+  </div>
+
+  <div class="monitor asset-modal" id="asset-modal" hidden>
+    <div class="monitor-head">
+      <span id="asset-title">WT-02 · 风机本体</span>
+      <button class="btn ghost" id="asset-close">关闭</button>
+    </div>
+    <div class="monitor-grid asset-grid2" id="asset-grid"></div>
+  </div>
+
+</body>
+</html>
